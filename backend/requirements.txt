@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-dotenv
+python-multipart
+bcrypt
+python-jose
+pymongo
+pypdf
+sentence-transformers
+numpy
+requests
