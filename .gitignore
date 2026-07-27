@@ -1,34 +1,149 @@
-# ---------- OS / Editor ----------
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+# ==============================================================================
+# Environment Variables, Secrets & Credentials
+# ==============================================================================
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+!*.env.example
+!.env.template
+!*.env.template
 
-# ---------- Python ----------
+# API Keys, Tokens & Private Keys
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.asc
+id_rsa
+id_ed25519
+*credentials*.json
+*service-account*.json
+*secret*.json
+
+# ==============================================================================
+# Database, Storage & Upload Artifacts
+# ==============================================================================
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.dump
+*.sql
+
+# User uploads and runtime storage
+uploads/
+backend/uploads/
+storage/
+media/
+data/
+*.log
+
+# Vector databases & local embeddings index
+.chroma/
+chroma_db/
+faiss_index/
+vectorstore/
+
+# ==============================================================================
+# Python / FastAPI Backend
+# ==============================================================================
 __pycache__/
 *.py[cod]
-*.pyd
+*$py.class
 *.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environments
 .venv/
 venv/
+ENV/
 env/
-*.egg-info/
+env.bak/
+venv.bak/
+
+# Testing & Linting
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
 
-# Local backend runtime artifacts
-backend/.env
-backend/uploads/
-
-# ---------- Node / Next ----------
+# ==============================================================================
+# Node.js / Next.js Frontend
+# ==============================================================================
+node_modules/
 frontend/node_modules/
+.next/
 frontend/.next/
-frontend/.env.local
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/pnpm-debug.log*
-frontend/tsconfig.tsbuildinfo
+out/
+frontend/out/
 
-# ---------- Misc ----------
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js / TypeScript build output
+frontend/tsconfig.tsbuildinfo
+.turbo/
+.vercel/
+
+# ==============================================================================
+# OS & IDE Specific Files
+# ==============================================================================
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+
+# ==============================================================================
+# Archives & Temporary Files
+# ==============================================================================
 *.zip
+*.tar.gz
+*.tar
+*.gz
+*.7z
+*.rar
+*.tmp
+*.bak
