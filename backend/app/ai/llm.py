@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from typing import Iterable, Optional
 
 import requests
@@ -9,13 +10,62 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models"
 DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-FALLBACK_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-]
+
+_cached_models: list[str] = []
+_cache_timestamp: float = 0
+
+
+def _fetch_live_groq_models(api_key: str) -> list[str]:
+    """Dynamically query Groq API to get all available text generation models for this key."""
+    global _cached_models, _cache_timestamp
+    now = time.time()
+    if _cached_models and (now - _cache_timestamp) < 600:
+        return _cached_models
+
+    try:
+        res = requests.get(
+            GROQ_MODELS_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10,
+        )
+        if res.status_code == 200:
+            data = res.json()
+            models_data = data.get("data", [])
+            valid_models = []
+            for item in models_data:
+                model_id = str(item.get("id", "")).strip()
+                # Skip non-chat/audio/guard/moderation models
+                if any(x in model_id.lower() for x in ["whisper", "guard", "moderation", "tts", "embedding"]):
+                    continue
+                valid_models.append(model_id)
+
+            if valid_models:
+                # Rank models: 70b/versatile first, then 8b/instant, then others
+                def _model_priority(name: str) -> int:
+                    n = name.lower()
+                    if "3.3-70b" in n or "3.3" in n:
+                        return 0
+                    if "3.1-70b" in n:
+                        return 1
+                    if "3.1-8b" in n or "instant" in n:
+                        return 2
+                    if "llama" in n:
+                        return 3
+                    if "qwen" in n:
+                        return 4
+                    return 5
+
+                valid_models.sort(key=_model_priority)
+                _cached_models = valid_models
+                _cache_timestamp = now
+                logger.info("Dynamically retrieved %d active Groq models: %s", len(valid_models), valid_models[:5])
+                return valid_models
+    except Exception as exc:
+        logger.warning("Failed to fetch live Groq models dynamically: %s", exc)
+
+    return []
 
 
 def _dedupe_models(models: Iterable[str]) -> list[str]:
@@ -53,7 +103,15 @@ def call_groq(
         raise RuntimeError("GROQ_API_KEY is missing. Please add your Groq API key in Render / .env.")
 
     api_key = api_key.strip()
-    candidate_models = _dedupe_models((preferred_models or []) + [DEFAULT_MODEL] + FALLBACK_MODELS)
+
+    # 1. Fetch live models currently active on user's Groq account
+    live_models = _fetch_live_groq_models(api_key)
+
+    # 2. Build candidate list prioritizing preferred/default, then live dynamic models, then fallbacks
+    static_fallbacks = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    candidate_models = _dedupe_models(
+        (preferred_models or []) + [DEFAULT_MODEL] + live_models + static_fallbacks
+    )
     attempt_errors: list[str] = []
 
     for model in candidate_models:
