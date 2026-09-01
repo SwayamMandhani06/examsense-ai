@@ -1,11 +1,20 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, BookOpen, Sparkles, BarChart2,
-  Settings, LogOut, ChevronLeft, ChevronRight, ShieldCheck, UserCircle2,
+  LayoutDashboard,
+  BookOpen,
+  Sparkles,
+  BarChart2,
+  Settings,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  UserCircle2,
+  GraduationCap,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuthStore } from "@/store/authStore";
@@ -22,12 +31,10 @@ export function Sidebar() {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/subjects", label: "Subjects", icon: BookOpen },
-    { href: "/ask-ai", label: "Ask AI", icon: Sparkles },
+    { href: "/ask-ai", label: "Ask AI Tutor", icon: Sparkles, badge: "Groq" },
     { href: "/analytics", label: "Analytics", icon: BarChart2 },
-    ...(isAdmin ? [{ href: "/admin", label: "Admin Panel", icon: ShieldCheck }] : []),
+    ...(isAdmin ? [{ href: "/admin", label: "Admin Panel", icon: ShieldCheck, badge: "Admin" }] : []),
   ];
-  const profileActive = pathname === "/profile";
-  const settingsActive = pathname === "/settings";
 
   const handleLogout = () => {
     logout();
@@ -37,45 +44,100 @@ export function Sidebar() {
 
   return (
     <motion.aside
-      animate={{ width: collapsed ? 64 : 240 }}
-      transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="flex flex-col flex-shrink-0 bg-card border-r border-border z-30 overflow-hidden"
+      animate={{ width: collapsed ? 72 : 256 }}
+      transition={{ duration: 0.2, ease: "easeInOut" }}
+      className="flex flex-col shrink-0 bg-card border-r border-border z-30 overflow-hidden select-none"
     >
-      <div className="flex items-center justify-between px-4 py-5 border-b border-border min-h-[65px]">
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="font-display text-lg font-extrabold gradient-text whitespace-nowrap">
-              ExamSense AI
-            </motion.span>
-          )}
-        </AnimatePresence>
-        <button onClick={() => setCollapsed((c) => !c)}
-          className="w-7 h-7 rounded-md flex items-center justify-center text-text-muted hover:text-text hover:bg-surface transition-all flex-shrink-0">
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      {/* Brand Header */}
+      <div className="flex items-center justify-between px-4 py-4 border-b border-border min-h-[64px]">
+        <Link href="/" className="flex items-center gap-2.5 overflow-hidden">
+          <div className="w-9 h-9 rounded-xl bg-primary-gradient flex items-center justify-center text-white shrink-0 shadow-glow-sm">
+            <GraduationCap size={20} />
+          </div>
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="flex flex-col whitespace-nowrap"
+              >
+                <span className="font-display font-black text-base gradient-text tracking-tight">
+                  ExamSense AI
+                </span>
+                <span className="text-[10px] text-text-subtle font-semibold uppercase tracking-wider -mt-0.5">
+                  Academic Intelligence
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Link>
+
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-text hover:bg-surface transition-all shrink-0"
+        >
+          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+      {/* Navigation Items */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {!collapsed && (
-          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-2.5 pt-2 pb-1.5">Main</p>
+          <p className="text-[10px] font-bold text-text-subtle uppercase tracking-widest px-3 pt-2 pb-1">
+            Menu
+          </p>
         )}
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+
+        {navItems.map(({ href, label, icon: Icon, badge }) => {
+          const active =
+            pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           const isAdminLink = href === "/admin";
+
           return (
-            <Link key={href} href={href}>
-              <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                active
-                  ? isAdminLink ? "bg-amber-500/15 text-amber-400" : "bg-primary/15 text-primary-light"
-                  : isAdminLink ? "text-amber-500/70 hover:bg-amber-500/10 hover:text-amber-400" : "text-text-muted hover:bg-primary/8 hover:text-text"
-              }`}>
-                <Icon size={16} className="flex-shrink-0" />
+            <Link key={href} href={href} className="block">
+              <div
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+                  active
+                    ? "bg-primary-gradient text-white shadow-glow-sm"
+                    : "text-text-muted hover:text-text hover:bg-surface"
+                }`}
+              >
+                <Icon
+                  size={18}
+                  className={`shrink-0 ${
+                    active
+                      ? "text-white"
+                      : isAdminLink
+                      ? "text-amber-400"
+                      : "text-text-muted group-hover:text-text"
+                  }`}
+                />
+
                 <AnimatePresence>
                   {!collapsed && (
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 whitespace-nowrap">
-                      {label}
-                    </motion.span>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex-1 flex items-center justify-between whitespace-nowrap overflow-hidden"
+                    >
+                      <span className="truncate">{label}</span>
+                      {badge && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                            active
+                              ? "bg-white/20 text-white"
+                              : badge === "Admin"
+                              ? "bg-amber-500/15 text-amber-400 border border-amber-500/25"
+                              : "bg-primary/10 text-primary-light border border-primary/20"
+                          }`}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>
@@ -84,57 +146,70 @@ export function Sidebar() {
         })}
 
         {!collapsed && (
-          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-2.5 pt-4 pb-1.5">Account</p>
+          <p className="text-[10px] font-bold text-text-subtle uppercase tracking-widest px-3 pt-4 pb-1">
+            Account
+          </p>
         )}
-        <Link href="/profile">
-          <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-            profileActive ? "bg-primary/15 text-primary-light" : "text-text-muted hover:bg-primary/8 hover:text-text"
-          }`}>
-            <UserCircle2 size={16} className="flex-shrink-0" />
+
+        <Link href="/profile" className="block">
+          <div
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              pathname === "/profile"
+                ? "bg-primary-gradient text-white shadow-glow-sm"
+                : "text-text-muted hover:text-text hover:bg-surface"
+            }`}
+          >
+            <UserCircle2 size={18} className="shrink-0" />
             <AnimatePresence>
               {!collapsed && (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="whitespace-nowrap">Profile</motion.span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="whitespace-nowrap"
+                >
+                  Profile
+                </motion.span>
               )}
             </AnimatePresence>
           </div>
         </Link>
-        <Link href="/settings">
-          <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-            settingsActive ? "bg-primary/15 text-primary-light" : "text-text-muted hover:bg-primary/8 hover:text-text"
-          }`}>
-            <Settings size={16} className="flex-shrink-0" />
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="whitespace-nowrap">Settings</motion.span>
-              )}
-            </AnimatePresence>
-          </div>
-        </Link>
-        <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-muted hover:bg-danger/10 hover:text-danger transition-all">
-          <LogOut size={16} className="flex-shrink-0" />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="whitespace-nowrap">Sign Out</motion.span>
-            )}
-          </AnimatePresence>
-        </button>
       </nav>
 
-      {!collapsed && (
-        <div className="p-3 border-t border-border">
-          <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-primary/8 cursor-pointer transition-all">
-            <div className="w-8 h-8 rounded-full bg-primary-gradient flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+      {/* User Footer Card */}
+      <div className="p-3 border-t border-border bg-surface/40">
+        <div
+          className={`flex items-center ${
+            collapsed ? "justify-center" : "justify-between"
+          } p-2 rounded-xl bg-card border border-border/80`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-primary-gradient flex items-center justify-center text-white text-xs font-bold shrink-0">
               {getUserInitials(user)}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{getUserDisplayName(user)}</p>
-              <p className="text-[11px] text-text-muted">
-                {isAdmin ? "Administrator" : user?.btechYear ? `Student · Year ${user.btechYear}` : "Student"}
-              </p>
-            </div>
-          </Link>
+            {!collapsed && (
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold truncate text-text">
+                  {getUserDisplayName(user)}
+                </span>
+                <span className="text-[10px] text-text-muted truncate">
+                  {user?.role === "admin" ? "Administrator" : `Year ${user?.btechYear || "All"}`}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {!collapsed && (
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+            >
+              <LogOut size={14} />
+            </button>
+          )}
         </div>
-      )}
+      </div>
     </motion.aside>
   );
 }

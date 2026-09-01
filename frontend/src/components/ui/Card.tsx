@@ -1,19 +1,28 @@
-// Card.tsx
-import { cn } from "@/lib/utils";
+import { HTMLAttributes } from "react";
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  hover?: boolean;
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "glass" | "bordered" | "gradient";
+  glow?: boolean;
 }
 
-export function Card({ children, className, hover = true, ...props }: CardProps) {
+export function Card({
+  className = "",
+  variant = "glass",
+  glow = false,
+  children,
+  ...props
+}: CardProps) {
+  const variantStyles = {
+    default: "bg-card border border-border shadow-card",
+    glass: "glass-card",
+    bordered: "bg-surface/50 border border-border/80 hover:border-border",
+    gradient:
+      "bg-gradient-to-b from-card to-surface/80 border border-border shadow-card",
+  };
+
   return (
     <div
-      className={cn(
-        "bg-card border border-border rounded-xl p-5 transition-colors",
-        hover && "hover:border-primary/30",
-        className
-      )}
+      className={`rounded-2xl p-5 ${variantStyles[variant]} ${glow ? "shadow-glow" : ""} ${className}`}
       {...props}
     >
       {children}

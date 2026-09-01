@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { KeyRound, Lock, LogOut, Save, Sparkles } from "lucide-react";
+import { KeyRound, Lock, LogOut, Save, Sparkles, SunMoon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { auth } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -39,7 +42,7 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      toast.success("Password updated.");
+      toast.success("Password updated successfully.");
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.detail ?? "Failed to update password");
@@ -68,105 +71,165 @@ export default function SettingsPage() {
       localStorage.setItem("ai_strict_mode", String(strictMode));
       localStorage.setItem("ai_show_sources", String(showSources));
     }
-    toast.success("Preferences saved.");
+    toast.success("Preferences saved successfully.");
   };
 
   return (
-    <div className="p-7 space-y-5">
-      <section className="bg-card border border-border rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-5">
-          <Lock size={16} className="text-primary-light" />
-          <h2 className="font-display text-lg font-bold">Security</h2>
-        </div>
-        <form onSubmit={submitPassword} className="grid grid-cols-3 gap-3 items-end">
-          <div>
-            <label className="block text-xs text-text-muted mb-1.5">Current Password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1.5">New Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1.5">Confirm New Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={passwordMutation.isPending}
-            className="col-span-3 sm:col-span-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-primary-gradient hover:opacity-90 disabled:opacity-50 transition-opacity"
-          >
-            <KeyRound size={14} />
-            {passwordMutation.isPending ? "Updating..." : "Update password"}
-          </button>
-        </form>
-      </section>
+    <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="font-display text-2xl lg:text-3xl font-extrabold text-text tracking-tight">
+          Application Settings
+        </h1>
+        <p className="text-xs sm:text-sm text-text-muted mt-1">
+          Manage your account security, AI assistant behavior, and theme preferences.
+        </p>
+      </div>
 
-      <section className="bg-card border border-border rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-5">
-          <Sparkles size={16} className="text-primary-light" />
-          <h2 className="font-display text-lg font-bold">AI Assistant Preferences</h2>
+      {/* Theme Appearance Card */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <SunMoon size={18} className="text-primary-light" />
+          <h2 className="font-display text-base font-bold text-text">Appearance & Theme</h2>
+        </div>
+
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-surface border border-border">
+          <div>
+            <p className="font-bold text-xs sm:text-sm text-text">Theme Preference</p>
+            <p className="text-xs text-text-muted mt-0.5">
+              Switch between Dark Obsidian and Light Porcelain themes
+            </p>
+          </div>
+          <ThemeToggle showLabel />
+        </div>
+      </Card>
+
+      {/* AI Assistant Preferences */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles size={18} className="text-primary-light" />
+          <h2 className="font-display text-base font-bold text-text">AI Assistant Preferences</h2>
         </div>
 
         <div className="space-y-3">
-          <label className="flex items-center justify-between px-3 py-2.5 bg-surface border border-border rounded-lg">
-            <span className="text-sm">Strict context-only answers</span>
+          <label className="flex items-center justify-between p-4 bg-surface border border-border rounded-2xl cursor-pointer hover:border-primary/40 transition-colors">
+            <div>
+              <p className="font-bold text-xs sm:text-sm text-text">Strict Context-Only Mode</p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Forces AI to answer exclusively using uploaded syllabus and paper chunks
+              </p>
+            </div>
             <input
               type="checkbox"
               checked={strictMode}
               onChange={(e) => setStrictMode(e.target.checked)}
-              className="accent-primary"
+              className="w-4 h-4 accent-primary rounded cursor-pointer"
             />
           </label>
 
-          <label className="flex items-center justify-between px-3 py-2.5 bg-surface border border-border rounded-lg">
-            <span className="text-sm">Show source references in chat</span>
+          <label className="flex items-center justify-between p-4 bg-surface border border-border rounded-2xl cursor-pointer hover:border-primary/40 transition-colors">
+            <div>
+              <p className="font-bold text-xs sm:text-sm text-text">Evidence Source References</p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Displays clickable [Source 1] citations below AI tutor answers
+              </p>
+            </div>
             <input
               type="checkbox"
               checked={showSources}
               onChange={(e) => setShowSources(e.target.checked)}
-              className="accent-primary"
+              className="w-4 h-4 accent-primary rounded cursor-pointer"
             />
           </label>
         </div>
 
-        <button
-          onClick={savePreferences}
-          className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-primary-gradient hover:opacity-90 transition-opacity"
-        >
-          <Save size={14} />
-          Save preferences
-        </button>
-      </section>
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={savePreferences}
+            leftIcon={<Save size={14} />}
+          >
+            Save Preferences
+          </Button>
+        </div>
+      </Card>
 
-      <section className="bg-card border border-border rounded-xl p-6">
-        <h2 className="font-display text-lg font-bold mb-4">Session</h2>
-        <button
+      {/* Security / Password Card */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Lock size={18} className="text-primary-light" />
+          <h2 className="font-display text-base font-bold text-text">Account Security</h2>
+        </div>
+
+        <form onSubmit={submitPassword} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-surface border border-border rounded-xl text-xs sm:text-sm text-text focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-surface border border-border rounded-xl text-xs sm:text-sm text-text focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-surface border border-border rounded-xl text-xs sm:text-sm text-text focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={passwordMutation.isPending}
+              leftIcon={<KeyRound size={14} />}
+            >
+              Update Password
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      {/* Session Management */}
+      <Card className="p-6 flex items-center justify-between border-danger/20">
+        <div>
+          <h3 className="font-bold text-sm text-text">Sign Out of Session</h3>
+          <p className="text-xs text-text-muted mt-0.5">End active authentication session on this device</p>
+        </div>
+        <Button
+          variant="danger"
+          size="sm"
           onClick={() => {
             logout();
             router.push("/");
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border border-danger/25 text-danger hover:bg-danger/10 transition-colors"
+          leftIcon={<LogOut size={14} />}
         >
-          <LogOut size={14} />
-          Sign out
-        </button>
-      </section>
+          Sign Out
+        </Button>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,49 +10,60 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-dm-sans)", "sans-serif"],
-        display: ["var(--font-syne)", "sans-serif"],
+        sans: ["var(--font-body)", "sans-serif"],
+        display: ["var(--font-display)", "sans-serif"],
+        mono: ["var(--font-mono)", "monospace"],
       },
       colors: {
-        bg: "#0F1117",
-        card: "#161A23",
-        surface: "#1B2030",
-        border: "#2A2F3A",
-        primary: {
-          DEFAULT: "#7C3AED",
-          light: "#8B5CF6",
-          dark: "#6D28D9",
-        },
-        accent: "#4F46E5",
+        bg: "var(--bg)",
+        card: "var(--bg-card)",
+        surface: "var(--bg-surface)",
+        hover: "var(--bg-hover)",
+        border: "var(--border)",
+        "border-hover": "var(--border-hover)",
         text: {
-          DEFAULT: "#E6E8EC",
-          muted: "#9CA3AF",
+          DEFAULT: "var(--text-main)",
+          muted: "var(--text-muted)",
+          subtle: "var(--text-subtle)",
         },
-        success: "#22C55E",
+        primary: {
+          DEFAULT: "var(--primary)",
+          light: "var(--primary-light)",
+          dark: "var(--primary-dark)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          cyan: "var(--accent-cyan)",
+          emerald: "var(--accent-emerald)",
+          amber: "var(--accent-amber)",
+          rose: "var(--accent-rose)",
+        },
+        success: "#10B981",
         warning: "#F59E0B",
         danger: "#EF4444",
       },
       backgroundImage: {
-        "primary-gradient": "linear-gradient(135deg, #6D28D9, #7C3AED, #4F46E5)",
-        "primary-gradient-r": "linear-gradient(to right, #6D28D9, #4F46E5)",
+        "primary-gradient": "linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #6366F1 100%)",
+        "primary-gradient-hover": "linear-gradient(135deg, #6D28D9 0%, #7C3AED 50%, #4F46E5 100%)",
+        "accent-gradient": "linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)",
+        "glass-gradient": "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%)",
+      },
+      boxShadow: {
+        sm: "var(--shadow-sm)",
+        card: "var(--shadow-card)",
+        glow: "var(--shadow-glow)",
+        "glow-sm": "0 0 15px rgba(124, 58, 237, 0.2)",
       },
       borderRadius: {
-        DEFAULT: "8px",
+        DEFAULT: "10px",
+        xl: "14px",
+        "2xl": "20px",
+        "3xl": "28px",
       },
       animation: {
-        "fade-up": "fadeUp 0.4s ease forwards",
+        float: "floatSlow 5s ease-in-out infinite",
+        "pulse-subtle": "pulseSubtle 3s ease-in-out infinite",
         shimmer: "shimmer 1.5s infinite",
-        bounce: "bounce 1.2s infinite",
-      },
-      keyframes: {
-        fadeUp: {
-          from: { opacity: "0", transform: "translateY(16px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        shimmer: {
-          "0%": { backgroundPosition: "-400px 0" },
-          "100%": { backgroundPosition: "400px 0" },
-        },
       },
     },
   },
