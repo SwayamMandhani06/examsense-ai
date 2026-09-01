@@ -13,6 +13,9 @@ load_dotenv()
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "examsense_db")
 
+import logging
+logger = logging.getLogger(__name__)
+
 _client: MongoClient | None = None
 
 
@@ -20,8 +23,6 @@ def get_client() -> MongoClient:
     global _client
     if _client is None:
         _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-        # Fail fast if MongoDB is unreachable.
-        _client.admin.command("ping")
     return _client
 
 
@@ -56,24 +57,22 @@ def serialize_object_id(value: ObjectId | str | None) -> str | None:
 
 
 def ensure_indexes() -> None:
-    db = get_database()
-
-    db.users.create_index([("email", ASCENDING)], unique=True, name="users_email_unique")
-
-    db.subjects.create_index([("name", ASCENDING), ("year", ASCENDING)], name="subjects_name_year")
-    db.subjects.create_index([("year", ASCENDING)], name="subjects_year")
-
-    db.materials.create_index([("subject_id", ASCENDING)], name="materials_subject_id")
-    db.materials.create_index([("uploaded_by", ASCENDING)], name="materials_uploaded_by")
-
-    db.document_chunks.create_index([("material_id", ASCENDING)], name="chunks_material_id")
-    db.document_chunks.create_index([("subject_id", ASCENDING)], name="chunks_subject_id")
-
-    db.question_analytics.create_index([("subject_id", ASCENDING)], name="analytics_subject_id")
-    db.question_analytics.create_index([("subject_id", ASCENDING), ("exam_year", ASCENDING)], name="analytics_subject_year")
-    db.question_analytics.create_index([("material_id", ASCENDING)], name="analytics_material_id")
-    db.question_analytics.create_index([("subject_id", ASCENDING), ("question_key", ASCENDING)], name="analytics_subject_qkey")
-    db.question_analytics.create_index([("question", ASCENDING)], name="analytics_question")
-
-    db.chat_sessions.create_index([("user_id", ASCENDING)], name="sessions_user_id")
-    db.chat_sessions.create_index([("updated_at", DESCENDING)], name="sessions_updated_at")
+    try:
+        db = get_database()
+        db.users.create_index([("email", ASCENDING)], unique=True, name="users_email_unique")
+        db.subjects.create_index([("name", ASCENDING), ("year", ASCENDING)], name="subjects_name_year")
+        db.subjects.create_index([("year", ASCENDING)], name="subjects_year")
+        db.materials.create_index([("subject_id", ASCENDING)], name="materials_subject_id")
+        db.materials.create_index([("uploaded_by", ASCENDING)], name="materials_uploaded_by")
+        db.document_chunks.create_index([("material_id", ASCENDING)], name="chunks_material_id")
+        db.document_chunks.create_index([("subject_id", ASCENDING)], name="chunks_subject_id")
+        db.question_analytics.create_index([("subject_id", ASCENDING)], name="analytics_subject_id")
+        db.question_analytics.create_index([("subject_id", ASCENDING), ("exam_year", ASCENDING)], name="analytics_subject_year")
+        db.question_analytics.create_index([("material_id", ASCENDING)], name="analytics_material_id")
+        db.question_analytics.create_index([("subject_id", ASCENDING), ("question_key", ASCENDING)], name="analytics_subject_qkey")
+        db.question_analytics.create_index([("question", ASCENDING)], name="analytics_question")
+        db.chat_sessions.create_index([("user_id", ASCENDING)], name="sessions_user_id")
+        db.chat_sessions.create_index([("updated_at", DESCENDING)], name="sessions_updated_at")
+        logger.info("MongoDB indexes verified successfully.")
+    except Exception as exc:
+        logger.warning("MongoDB index initialization deferred: %s", exc)
