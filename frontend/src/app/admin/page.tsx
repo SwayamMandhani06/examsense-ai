@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
-import { subjects } from "@/lib/api";
+import { subjects, analytics } from "@/lib/api";
 import { API_BASE_URL, TOKEN_KEY } from "@/lib/constants";
 import {
   Plus,
@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
+  Database,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -38,6 +39,20 @@ export default function AdminPage() {
   const { data: subjectsList = [], isLoading } = useQuery({
     queryKey: ["subjects"],
     queryFn: subjects.getAll,
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: analytics.seedDemoData,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-trend"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-topics"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-units"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-repeated"] });
+      toast.success(data.message || "Academic demo data populated successfully!");
+    },
+    onError: () => toast.error("Failed to seed demo data"),
   });
 
   const deleteMutation = useMutation({
@@ -88,11 +103,23 @@ export default function AdminPage() {
           </p>
         </div>
 
-        <Link href="/admin/subjects/new">
-          <Button variant="primary" size="sm" leftIcon={<Plus size={16} />}>
-            Create Subject
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => seedMutation.mutate()}
+            isLoading={seedMutation.isPending}
+            leftIcon={<Database size={15} className="text-primary-light" />}
+          >
+            Seed Sample Academic Data
           </Button>
-        </Link>
+
+          <Link href="/admin/subjects/new">
+            <Button variant="primary" size="sm" leftIcon={<Plus size={16} />}>
+              Create Subject
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Metrics Row */}

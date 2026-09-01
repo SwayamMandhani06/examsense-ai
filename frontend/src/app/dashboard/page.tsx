@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import {
   BookOpen,
   FileText,
@@ -40,10 +41,25 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
+  const queryClient = useQueryClient();
 
   const { data: subjectsList = [] } = useQuery({
     queryKey: ["subjects"],
     queryFn: subjects.getAll,
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: analytics.seedDemoData,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-trend"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-topics"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-units"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-repeated"] });
+      toast.success(data.message || "Academic demo data populated successfully!");
+    },
+    onError: () => toast.error("Failed to seed demo data"),
   });
 
   const { data: summary } = useQuery({
@@ -205,8 +221,20 @@ export default function DashboardPage() {
 
               <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[320px] pr-1">
                 {subjectsList.length === 0 ? (
-                  <div className="text-center py-12 text-xs text-text-muted">
-                    No subjects registered yet. Click below to add one.
+                  <div className="text-center py-8 px-2 space-y-3">
+                    <p className="text-xs text-text-muted">
+                      No curriculum data indexed yet.
+                    </p>
+                    <Button
+                      size="xs"
+                      variant="primary"
+                      onClick={() => seedMutation.mutate()}
+                      isLoading={seedMutation.isPending}
+                      leftIcon={<Sparkles size={13} />}
+                      className="w-full"
+                    >
+                      Seed 4 B.Tech Subjects & Analytics
+                    </Button>
                   </div>
                 ) : (
                   subjectsList.slice(0, 4).map((sub) => (

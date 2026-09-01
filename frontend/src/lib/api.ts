@@ -185,6 +185,13 @@ export const analytics = {
     );
     return res.data;
   },
+
+  seedDemoData: async (): Promise<{ status: string; message: string; subjects: string[] }> => {
+    const res = await axiosInstance.post<{ status: string; message: string; subjects: string[] }>(
+      "/analytics/seed-demo-data"
+    );
+    return res.data;
+  },
 };
 
 // ===============================

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import { analytics, subjects as subjectsApi } from "@/lib/api";
 import {
   LineChart,
@@ -141,6 +142,22 @@ export default function AnalyticsPage() {
 
   const hasData = trendData.length > 0 || topicsData.length > 0 || repeatedRaw.length > 0;
 
+  const queryClient = useQueryClient();
+
+  const seedMutation = useMutation({
+    mutationFn: analytics.seedDemoData,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-trend"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-topics"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-units"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-repeated"] });
+      toast.success(data.message || "Sample academic data loaded!");
+    },
+    onError: () => toast.error("Failed to seed demo data"),
+  });
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Subject Selector */}
@@ -159,33 +176,51 @@ export default function AnalyticsPage() {
           </p>
         </div>
 
-        {/* Subject Filter Dropdown */}
-        <div className="relative w-full sm:w-72">
-          <select
-            value={selectedSubjectId}
-            onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="w-full px-4 py-2.5 bg-card border border-border rounded-2xl text-xs font-bold text-text focus:outline-none focus:border-primary shadow-sm appearance-none cursor-pointer pr-10"
-          >
-            {subjectList.map((s: any) => (
-              <option key={s.id} value={s.id}>
-                {s.name} (Year {s.year})
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-          />
+        {/* Subject Filter Dropdown & Seed Action */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <select
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              className="w-full px-4 py-2.5 bg-card border border-border rounded-2xl text-xs font-bold text-text focus:outline-none focus:border-primary shadow-sm appearance-none cursor-pointer pr-10"
+            >
+              {subjectList.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} (Year {s.year})
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={14}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+            />
+          </div>
         </div>
       </div>
 
-      {/* No Data Alert */}
-      {!hasData && selectedSubjectId && (
-        <div className="p-4 rounded-2xl bg-warning/10 border border-warning/25 text-xs text-amber-500 flex items-center gap-3">
-          <AlertCircle size={18} className="shrink-0" />
-          <span>
-            No analytics extracted for this subject yet. Upload PDF past exam papers in the Subject view to populate charts.
-          </span>
+      {/* No Data Alert with Instant Action */}
+      {!hasData && (
+        <div className="p-5 rounded-3xl bg-surface border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary-light flex items-center justify-center shrink-0">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-text">No exam questions extracted yet</p>
+              <p className="text-[11px] text-text-muted mt-0.5">
+                Upload university question papers or click below to populate 4 years of sample academic data.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => seedMutation.mutate()}
+            isLoading={seedMutation.isPending}
+            leftIcon={<Sparkles size={14} />}
+          >
+            Load Sample Academic Analytics
+          </Button>
         </div>
       )}
 
