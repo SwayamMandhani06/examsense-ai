@@ -9,6 +9,11 @@
 !*.env.example
 !.env.template
 !*.env.template
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env.local
 
 # API Keys, Tokens & Private Keys
 *.pem
@@ -43,11 +48,13 @@ media/
 data/
 *.log
 
-# Vector databases & local embeddings index
+# Vector databases & local embeddings cache
 .chroma/
 chroma_db/
 faiss_index/
 vectorstore/
+.cache/
+backend/.cache/
 
 # ==============================================================================
 # Python / FastAPI Backend
@@ -67,7 +74,6 @@ lib/
 lib64/
 parts/
 sdist/
-var/
 wheels/
 *.egg-info/
 .installed.cfg
@@ -76,6 +82,7 @@ MANIFEST
 
 # Environments
 .venv/
+backend/.venv/
 venv/
 ENV/
 env/
@@ -147,3 +154,4 @@ Desktop.ini
 *.rar
 *.tmp
 *.bak
+

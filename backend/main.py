@@ -22,12 +22,24 @@ def startup_event():
 def shutdown_event():
     close_mongo_connection()
 
+
+# Health check endpoints for deployment platforms
+@app.get("/")
+def root():
+    return {"status": "ok", "app": "ExamSense AI API"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+# Dynamic CORS origins configuration
+raw_origins = os.getenv("CORS_ORIGINS", os.getenv("FRONTEND_URL", "http://localhost:3000,http://127.0.0.1:3000"))
+allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

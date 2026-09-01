@@ -7,12 +7,12 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from app.ai.llm import call_openrouter
+from app.ai.llm import call_groq
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-DEFAULT_ANALYTICS_MODEL = os.getenv("OPENROUTER_ANALYTICS_MODEL", os.getenv("OPENROUTER_MODEL", "anthropic/claude-opus-4.1"))
+DEFAULT_ANALYTICS_MODEL = os.getenv("GROQ_ANALYTICS_MODEL", os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"))
 
 _FOOTER_PATTERNS = [
     re.compile(r"CEGP\d+\s+\d{1,3}(?:\.\d{1,3}){3}\s+\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}\s+static-\d+", re.IGNORECASE),
@@ -192,12 +192,12 @@ def _classify_questions_with_ai(questions: list[dict[str, Any]], subject_name: s
     ]
 
     try:
-        raw = call_openrouter(
+        raw = call_groq(
             messages,
             preferred_models=[DEFAULT_ANALYTICS_MODEL],
             temperature=0.0,
             max_tokens=1200,
-            timeout=75,
+            timeout=60,
         )
         parsed = _parse_classifier_response(raw)
         return parsed

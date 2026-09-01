@@ -6,13 +6,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-opus-4.1")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 FALLBACK_MODELS = [
-    "anthropic/claude-opus-4.1",
-    "anthropic/claude-sonnet-4",
-    "anthropic/claude-3.7-sonnet",
-    "anthropic/claude-3.5-sonnet",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
 ]
 
 
@@ -33,30 +33,28 @@ def _extract_content(payload: dict) -> str:
     return str(content).strip()
 
 
-def call_openrouter(
+def call_groq(
     messages: list[dict],
     *,
     preferred_models: Optional[list[str]] = None,
     temperature: float = 0.2,
     max_tokens: int = 1200,
-    timeout: int = 90,
+    timeout: int = 60,
 ) -> str:
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        raise RuntimeError("AI is not configured. Please set OPENROUTER_API_KEY in backend/.env.")
+    api_key = os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+    if not api_key or api_key.startswith("your_"):
+        raise RuntimeError("AI is not configured. Please set GROQ_API_KEY in backend/.env.")
 
     candidate_models = _dedupe_models((preferred_models or []) + [DEFAULT_MODEL] + FALLBACK_MODELS)
-    last_error = "OpenRouter request failed."
+    last_error = "Groq API request failed."
 
     for model in candidate_models:
         try:
             response = requests.post(
-                OPENROUTER_URL,
+                GROQ_URL,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": os.getenv("OPENROUTER_REFERER", "http://localhost:3000"),
-                    "X-Title": os.getenv("OPENROUTER_APP_NAME", "ExamSense AI"),
                 },
                 json={
                     "model": model,
@@ -67,22 +65,22 @@ def call_openrouter(
                 timeout=timeout,
             )
         except requests.RequestException as exc:
-            last_error = f"Unable to reach OpenRouter: {exc}"
+            last_error = f"Unable to reach Groq: {exc}"
             continue
 
         if response.status_code == 401:
-            raise RuntimeError("OpenRouter API key is invalid. Update OPENROUTER_API_KEY.")
+            raise RuntimeError("Groq API key is invalid. Update GROQ_API_KEY in backend/.env.")
 
         if response.status_code in {400, 404, 422}:
             last_error = f"Model '{model}' unavailable or invalid request."
             continue
 
         if response.status_code == 429:
-            last_error = "Rate limit reached."
+            last_error = "Rate limit reached on Groq API."
             continue
 
         if response.status_code >= 500:
-            last_error = f"OpenRouter server error ({response.status_code})."
+            last_error = f"Groq server error ({response.status_code})."
             continue
 
         response.raise_for_status()
@@ -90,7 +88,7 @@ def call_openrouter(
         try:
             content = _extract_content(payload)
         except (KeyError, IndexError, TypeError):
-            last_error = "Unexpected response shape from OpenRouter."
+            last_error = "Unexpected response shape from Groq."
             continue
 
         if content:
@@ -98,6 +96,11 @@ def call_openrouter(
         last_error = "Empty response from model."
 
     raise RuntimeError(last_error)
+
+
+# Alias for backward compatibility
+call_openrouter = call_groq
+call_llm = call_groq
 
 
 def generate_answer(
@@ -152,11 +155,13 @@ Rules:
     messages.append({"role": "user", "content": user_prompt})
 
     try:
-        return call_openrouter(messages, temperature=0.15, max_tokens=1400)
+        return call_groq(messages, temperature=0.15, max_tokens=1400)
     except RuntimeError as exc:
         msg = str(exc)
         if "invalid" in msg.lower() and "api key" in msg.lower():
-            return "AI is not configured correctly. Please update OPENROUTER_API_KEY."
+            return "AI is not configured correctly. Please update GROQ_API_KEY."
+        if "not configured" in msg.lower():
+            return "AI is not configured. Please set your GROQ_API_KEY in backend/.env."
         if "rate limit" in msg.lower():
             return "Rate limited by AI provider. Please retry shortly."
         return "Unable to generate an answer right now. Please try again."
