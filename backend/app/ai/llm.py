@@ -9,16 +9,60 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models"
-DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-
 _cached_models: list[str] = []
 _cache_timestamp: float = 0
 
 
-def _fetch_live_groq_models(api_key: str) -> list[str]:
-    """Dynamically query Groq API to get all available text generation models for this key."""
+def _detect_provider(api_key: str) -> tuple[str, str, str, list[str]]:
+    """
+    Detect provider, base URL, chat completions URL, and default fallback models based on the API key format.
+    Returns: (provider_name, base_url, completions_url, default_models)
+    """
+    key = api_key.strip()
+    # Explicit override via env if set
+    custom_base = os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
+    if custom_base:
+        base = custom_base.rstrip("/")
+        return (
+            "custom",
+            base,
+            f"{base}/chat/completions",
+            ["llama-3.3-70b-versatile", "meta-llama/llama-3.3-70b-instruct", "gpt-4o-mini"],
+        )
+
+    # OpenRouter key detection
+    if key.startswith("sk-or-") or os.getenv("OPENROUTER_API_KEY"):
+        return (
+            "OpenRouter",
+            "https://openrouter.ai/api/v1",
+            "https://openrouter.ai/api/v1/chat/completions",
+            [
+                "meta-llama/llama-3.3-70b-instruct",
+                "meta-llama/llama-3.1-8b-instruct:free",
+                "google/gemini-2.0-flash-exp:free",
+                "deepseek/deepseek-chat",
+                "openrouter/auto",
+            ],
+        )
+
+    # Groq key (default or gsk_ prefix)
+    return (
+        "Groq",
+        "https://api.groq.com/openai/v1",
+        "https://api.groq.com/openai/v1/chat/completions",
+        [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "deepseek-r1-distill-llama-70b",
+            "llama-3.2-3b-preview",
+            "llama-3.2-1b-preview",
+            "qwen-2.5-32b",
+        ],
+    )
+
+
+def _fetch_live_models(base_url: str, api_key: str) -> list[str]:
+    """Dynamically query the provider's /models endpoint to retrieve active models for this key."""
     global _cached_models, _cache_timestamp
     now = time.time()
     if _cached_models and (now - _cache_timestamp) < 600:
@@ -26,9 +70,9 @@ def _fetch_live_groq_models(api_key: str) -> list[str]:
 
     try:
         res = requests.get(
-            GROQ_MODELS_URL,
+            f"{base_url}/models",
             headers={"Authorization": f"Bearer {api_key}"},
-            timeout=10,
+            timeout=8,
         )
         if res.status_code == 200:
             data = res.json()
@@ -36,34 +80,20 @@ def _fetch_live_groq_models(api_key: str) -> list[str]:
             valid_models = []
             for item in models_data:
                 model_id = str(item.get("id", "")).strip()
-                # Skip non-chat/audio/guard/moderation models
-                if any(x in model_id.lower() for x in ["whisper", "guard", "moderation", "tts", "embedding"]):
+                if not model_id:
+                    continue
+                # Filter out non-text generation models
+                if any(x in model_id.lower() for x in ["whisper", "guard", "moderation", "tts", "embedding", "embed", "vision", "image"]):
                     continue
                 valid_models.append(model_id)
 
             if valid_models:
-                # Rank models: 70b/versatile first, then 8b/instant, then others
-                def _model_priority(name: str) -> int:
-                    n = name.lower()
-                    if "3.3-70b" in n or "3.3" in n:
-                        return 0
-                    if "3.1-70b" in n:
-                        return 1
-                    if "3.1-8b" in n or "instant" in n:
-                        return 2
-                    if "llama" in n:
-                        return 3
-                    if "qwen" in n:
-                        return 4
-                    return 5
-
-                valid_models.sort(key=_model_priority)
                 _cached_models = valid_models
                 _cache_timestamp = now
-                logger.info("Dynamically retrieved %d active Groq models: %s", len(valid_models), valid_models[:5])
+                logger.info("Dynamically retrieved %d active models from %s", len(valid_models), base_url)
                 return valid_models
     except Exception as exc:
-        logger.warning("Failed to fetch live Groq models dynamically: %s", exc)
+        logger.warning("Failed to dynamically fetch live models from %s: %s", base_url, exc)
 
     return []
 
@@ -80,7 +110,7 @@ def _dedupe_models(models: Iterable[str]) -> list[str]:
 def _extract_content(payload: dict) -> str:
     choices = payload.get("choices")
     if not choices or not isinstance(choices, list):
-        raise ValueError("Invalid choices in Groq response")
+        raise ValueError("Invalid choices in LLM response")
     message = choices[0].get("message", {})
     content = message.get("content", "")
     if isinstance(content, list):
@@ -97,32 +127,45 @@ def call_groq(
     max_tokens: int = 1400,
     timeout: int = 45,
 ) -> str:
-    api_key = os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+    api_key = (
+        os.getenv("GROQ_API_KEY")
+        or os.getenv("OPENROUTER_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+    )
     if not api_key or api_key.startswith("your_"):
-        logger.error("GROQ_API_KEY is not configured in backend environment.")
-        raise RuntimeError("GROQ_API_KEY is missing. Please add your Groq API key in Render / .env.")
+        logger.error("No valid API key configured in backend environment.")
+        raise RuntimeError("AI API key is missing. Please set GROQ_API_KEY in your Render / .env environment.")
 
     api_key = api_key.strip()
+    provider_name, base_url, completions_url, default_fallbacks = _detect_provider(api_key)
 
-    # 1. Fetch live models currently active on user's Groq account
-    live_models = _fetch_live_groq_models(api_key)
+    # 1. Fetch live models from provider
+    live_models = _fetch_live_models(base_url, api_key)
 
-    # 2. Build candidate list prioritizing preferred/default, then live dynamic models, then fallbacks
-    static_fallbacks = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    env_model = os.getenv("GROQ_MODEL") or os.getenv("OPENROUTER_MODEL") or os.getenv("LLM_MODEL")
+
     candidate_models = _dedupe_models(
-        (preferred_models or []) + [DEFAULT_MODEL] + live_models + static_fallbacks
+        (preferred_models or [])
+        + ([env_model] if env_model else [])
+        + live_models
+        + default_fallbacks
     )
     attempt_errors: list[str] = []
 
     for model in candidate_models:
         try:
-            logger.info("Querying Groq with model: %s", model)
+            logger.info("Calling %s with model: %s", provider_name, model)
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            if provider_name == "OpenRouter":
+                headers["HTTP-Referer"] = "https://examsense-ai.vercel.app"
+                headers["X-Title"] = "ExamSense AI"
+
             response = requests.post(
-                GROQ_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
+                completions_url,
+                headers=headers,
                 json={
                     "model": model,
                     "messages": messages,
@@ -132,14 +175,14 @@ def call_groq(
                 timeout=timeout,
             )
         except requests.RequestException as exc:
-            err = f"Network connection failed: {exc}"
-            logger.warning("Network failure for model %s: %s", model, exc)
+            err = f"Network failure: {exc}"
+            logger.warning("%s network failure for model %s: %s", provider_name, model, exc)
             attempt_errors.append(f"{model}: {err}")
             continue
 
         if response.status_code == 401:
-            logger.error("Groq 401 Unauthorized: Invalid GROQ_API_KEY provided.")
-            raise RuntimeError("Invalid GROQ_API_KEY. Please verify your API key in Render / backend environment.")
+            logger.error("%s 401 Unauthorized: Invalid API key.", provider_name)
+            raise RuntimeError(f"Invalid {provider_name} API Key. Please verify your API key in Render environment settings.")
 
         if response.status_code != 200:
             err_detail = response.text[:140]
@@ -149,7 +192,7 @@ def call_groq(
                     err_detail = err_json["error"]["message"]
             except Exception:
                 pass
-            logger.warning("Groq model %s returned status %d: %s", model, response.status_code, err_detail)
+            logger.warning("%s model %s returned status %d: %s", provider_name, model, response.status_code, err_detail)
             attempt_errors.append(f"{model} ({response.status_code}): {err_detail}")
             continue
 
@@ -164,7 +207,7 @@ def call_groq(
             attempt_errors.append(f"{model}: Parse error ({exc})")
             continue
 
-    raise RuntimeError(" | ".join(attempt_errors) if attempt_errors else "All Groq model attempts failed.")
+    raise RuntimeError(" | ".join(attempt_errors) if attempt_errors else f"All {provider_name} model attempts failed.")
 
 
 # Aliases for backward compatibility
