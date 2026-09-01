@@ -15,7 +15,6 @@ FALLBACK_MODELS = [
     "llama-3.1-8b-instant",
     "llama3-70b-8192",
     "llama3-8b-8192",
-    "gemma2-9b-it",
 ]
 
 
@@ -55,7 +54,7 @@ def call_groq(
 
     api_key = api_key.strip()
     candidate_models = _dedupe_models((preferred_models or []) + [DEFAULT_MODEL] + FALLBACK_MODELS)
-    last_error = "Groq API request failed."
+    attempt_errors: list[str] = []
 
     for model in candidate_models:
         try:
@@ -75,22 +74,25 @@ def call_groq(
                 timeout=timeout,
             )
         except requests.RequestException as exc:
-            last_error = f"Network connection to Groq failed: {exc}"
+            err = f"Network connection failed: {exc}"
             logger.warning("Network failure for model %s: %s", model, exc)
+            attempt_errors.append(f"{model}: {err}")
             continue
 
         if response.status_code == 401:
             logger.error("Groq 401 Unauthorized: Invalid GROQ_API_KEY provided.")
             raise RuntimeError("Invalid GROQ_API_KEY. Please verify your API key in Render / backend environment.")
 
-        if response.status_code == 429:
-            last_error = "Groq rate limit exceeded."
-            logger.warning("Groq rate limit on model %s", model)
-            continue
-
         if response.status_code != 200:
-            logger.warning("Groq model %s returned status %d: %s", model, response.status_code, response.text[:200])
-            last_error = f"Groq API error ({response.status_code}): {response.text[:120]}"
+            err_detail = response.text[:140]
+            try:
+                err_json = response.json()
+                if "error" in err_json and "message" in err_json["error"]:
+                    err_detail = err_json["error"]["message"]
+            except Exception:
+                pass
+            logger.warning("Groq model %s returned status %d: %s", model, response.status_code, err_detail)
+            attempt_errors.append(f"{model} ({response.status_code}): {err_detail}")
             continue
 
         try:
@@ -98,13 +100,13 @@ def call_groq(
             content = _extract_content(payload)
             if content:
                 return content
-            last_error = "Empty response returned from model."
+            attempt_errors.append(f"{model}: Empty content returned")
         except Exception as exc:
-            last_error = f"Failed to parse Groq response: {exc}"
             logger.warning("Response parsing failed for model %s: %s", model, exc)
+            attempt_errors.append(f"{model}: Parse error ({exc})")
             continue
 
-    raise RuntimeError(last_error)
+    raise RuntimeError(" | ".join(attempt_errors) if attempt_errors else "All Groq model attempts failed.")
 
 
 # Aliases for backward compatibility
